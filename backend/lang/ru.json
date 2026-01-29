@@ -1,0 +1,6 @@
+{
+    "and :count more error": "и ещё :count ошибка",
+    "and :count more errors": "и ещё :count ошибок",
+    "The email has already been taken.": "Такой Email уже зарегистрирован.",
+    "The phone has already been taken.": "Такой телефон уже зарегистрирован."
+}

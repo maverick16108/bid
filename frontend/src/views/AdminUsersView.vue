@@ -1,107 +1,187 @@
-<template>
-  <div class="px-4 sm:px-6 lg:px-8 py-8">
-    <div class="sm:flex sm:items-center">
-      <div class="sm:flex-auto">
-        <h1 class="text-base font-semibold text-slate-900 font-sans">Пользователи</h1>
-        <p class="mt-2 text-sm text-slate-700">Список всех пользователей системы: имя, телефон, ИНН и статус.</p>
-      </div>
-      <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-         <!-- Potential 'Add User' button here -->
-      </div>
-    </div>
-    <div class="mt-8 flow-root">
-      <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-        <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-          <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
-            <table class="min-w-full divide-y divide-slate-300">
-              <thead class="bg-slate-50">
-                <tr>
-                  <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-slate-900 sm:pl-6">Имя</th>
-                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900">Телефон</th>
-                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900">ИНН</th>
-                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900">Роль</th>
-                  <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-slate-900">Статус</th>
-                  <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                    <span class="sr-only">Редактировать</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-200 bg-white">
-                <tr v-for="user in users" :key="user.id">
-                  <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-slate-900 sm:pl-6">{{ user.name }}</td>
-                  <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-500 font-mono">{{ user.phone }}</td>
-                  <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-500 font-mono">{{ user.inn || '-' }}</td>
-                  <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-500 bg-slate-50 rounded-md inline-block my-3 px-2 py-0.5 border border-slate-200 text-xs uppercase tracking-wide">{{ user.role }}</td>
-                  <td class="whitespace-nowrap px-3 py-4 text-sm">
-                    <span v-if="user.is_active" class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Активен</span>
-                    <span v-else class="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">Ожидает</span>
-                  </td>
-                  <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                    <button v-if="!user.is_active" @click="activateUser(user.id)" class="text-sky-600 hover:text-sky-900 mr-4 font-semibold transition-colors">Активировать</button>
-                    <button @click="deleteUser(user.id)" class="text-red-600 hover:text-red-900 font-semibold transition-colors">Удалить</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
+import { Dialog, DialogPanel, TransitionChild, TransitionRoot, DialogTitle } from '@headlessui/vue'
+import { PlusIcon, PencilSquareIcon, TrashIcon, ExclamationTriangleIcon, UserGroupIcon } from '@heroicons/vue/24/outline'
 
-interface User {
-    id: number;
-    name: string;
-    phone: string;
-    inn: string;
-    role: string;
-    is_active: boolean;
-}
+const router = useRouter()
+const users = ref<any[]>([])
+const loading = ref(false)
+const error = ref('')
 
-const users = ref<User[]>([])
+// Delete Modal State
+const isDeleteModalOpen = ref(false)
+const userToDelete = ref<any>(null)
+const isDeleting = ref(false)
 
 const fetchUsers = async () => {
+    loading.value = true
     try {
-        const response = await fetch('/api/admin/users', {
-            headers: { 'Accept': 'application/json' }
-        });
-        if (response.ok) {
-            const data = await response.json();
-            users.value = data.data; 
-        } else {
-             // Mock fallback
-             users.value = [
-                 { id: 1, name: 'Admin User', phone: '+79990000000', inn: '', role: 'admin', is_active: true },
-                 { id: 2, name: 'Ivan Petrov', phone: '+79991112233', inn: '7701234567', role: 'client', is_active: false },
-             ]
-        }
+        const { data } = await axios.get('/api/admin/users')
+        users.value = data
     } catch (e) {
-        console.error(e)
+        error.value = 'Ошибка загрузки пользователей'
+    } finally {
+        loading.value = false
     }
 }
 
-const activateUser = async (id: number) => {
-    await fetch(`/api/admin/users/${id}/activate`, {
-        method: 'PATCH',
-        headers: { 'Accept': 'application/json' }
-    });
-    fetchUsers();
+const formatDate = (dateString: string) => {
+    if (!dateString) return '-'
+    return new Intl.DateTimeFormat('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    }).format(new Date(dateString))
 }
 
-const deleteUser = async (id: number) => {
-    if(!confirm('Вы уверены?')) return;
-    await fetch(`/api/admin/users/${id}`, {
-        method: 'DELETE',
-        headers: { 'Accept': 'application/json' }
-    });
-    fetchUsers();
+const openDeleteModal = (user: any) => {
+    userToDelete.value = user
+    isDeleteModalOpen.value = true
 }
+
+const confirmDelete = async () => {
+    if (!userToDelete.value) return
+    
+    isDeleting.value = true
+    try {
+        await axios.delete(`/api/admin/users/${userToDelete.value.id}`)
+        fetchUsers()
+        isDeleteModalOpen.value = false
+    } catch (e) {
+        alert('Ошибка удаления')
+    } finally {
+        isDeleting.value = false
+        userToDelete.value = null
+    }
+}
+
+const goToCreate = () => router.push('/admin/users/create')
+const goToEdit = (id: number) => router.push(`/admin/users/${id}/edit`)
 
 onMounted(() => {
     fetchUsers()
 })
 </script>
+
+<template>
+  <div>
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">Пользователи</h1>
+            <p class="text-slate-500 text-sm mt-1">Клиенты и контрагенты системы</p>
+        </div>
+        
+        <button @click="goToCreate" class="btn-primary flex items-center justify-center gap-2 px-4 py-2.5 select-none">
+            <PlusIcon class="w-5 h-5" />
+            <span>Добавить пользователя</span>
+        </button>
+    </div>
+
+    <!-- Content -->
+    <div v-if="loading" class="text-center py-10 text-slate-500">Загрузка списка...</div>
+    
+    <div v-else class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Клиент</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Организация</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Контакты</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Регистрация</th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <tr v-for="user in users" :key="user.id" class="group hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            #{{ user.id }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs mr-3">
+                                    {{ user.name.charAt(0) }}
+                                </div>
+                                <div class="text-sm font-medium text-gray-900">{{ user.name }}</div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ user.organization_name || '-' }}</div>
+                            <div class="text-xs text-gray-500">ИНН: {{ user.inn || '-' }}</div>
+                        </td>
+                         <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ user.phone }}</div>
+                            <a v-if="user.email" :href="'mailto:' + user.email" class="text-xs text-gray-500 hover:text-indigo-600 transition-colors block">{{ user.email }}</a>
+                            <span v-else class="text-xs text-gray-400">-</span>
+                        </td>
+                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ formatDate(user.created_at) }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div class="flex items-center justify-end gap-3">
+                                <button @click="goToEdit(user.id)" class="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 select-none" title="Редактировать">
+                                    <PencilSquareIcon class="w-5 h-5" />
+                                </button>
+                                <button @click="openDeleteModal(user)" class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 select-none" title="Удалить">
+                                    <TrashIcon class="w-5 h-5" />
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr v-if="users.length === 0">
+                        <td colspan="6" class="px-6 py-10 text-center text-sm text-gray-500">
+                            Список пользователей пуст
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <TransitionRoot as="template" :show="isDeleteModalOpen">
+    <Dialog as="div" class="relative z-50" @close="isDeleteModalOpen = false">
+      <TransitionChild as="template" enter="ease-out duration-300" enter-from="opacity-0" enter-to="opacity-100" leave="ease-in duration-200" leave-from="opacity-100" leave-to="opacity-0">
+        <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" />
+      </TransitionChild>
+
+      <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+          <TransitionChild as="template" enter="ease-out duration-300" enter-from="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" enter-to="opacity-100 translate-y-0 sm:scale-100" leave="ease-in duration-200" leave-from="opacity-100 translate-y-0 sm:scale-100" leave-to="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+            <DialogPanel class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md border border-gray-100">
+              <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                <div class="sm:flex sm:items-start">
+                  <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <ExclamationTriangleIcon class="h-6 w-6 text-red-600" aria-hidden="true" />
+                  </div>
+                  <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                    <DialogTitle as="h3" class="text-lg font-semibold leading-6 text-slate-900">Удалить пользователя?</DialogTitle>
+                    <div class="mt-2">
+                        <p class="text-sm text-slate-500">
+                            Вы действительно хотите удалить <strong>{{ userToDelete?.name }}</strong>? <br>
+                            Все данные, включая заявки, будут потеряны.
+                        </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                <button type="button" class="inline-flex w-full justify-center rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto transition-colors focus:ring-2 focus:ring-red-500 focus:ring-offset-2" @click="confirmDelete" :disabled="isDeleting">
+                    {{ isDeleting ? 'Удаление...' : 'Удалить' }}
+                </button>
+                <button type="button" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-gray-50 sm:mt-0 sm:w-auto transition-colors" @click="isDeleteModalOpen = false" ref="cancelButtonRef">
+                    Отмена
+                </button>
+              </div>
+            </DialogPanel>
+          </TransitionChild>
+        </div>
+      </div>
+    </Dialog>
+  </TransitionRoot>
+</template>
