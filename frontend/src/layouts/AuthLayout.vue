@@ -8,16 +8,9 @@
         <div class="absolute -bottom-8 left-20 w-72 h-72 bg-indigo-300 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-4000"></div>
     </div>
 
+    <!-- Centered Content Wrapper -->
     <div class="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-      <img class="mx-auto h-16 w-auto mb-8 drop-shadow-sm" src="/logo/Logo_Novostal-black.webp" alt="Новосталь-М" />
-    </div>
-
-    <div class="relative z-10">
       <slot></slot>
-    </div>
-    
-    <div class="mt-8 text-center text-xs text-gray-400 relative z-10">
-        &copy; 2026 Novostal-M. Все права защищены.
     </div>
   </div>
 </template>
