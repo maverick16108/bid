@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { Dialog, DialogPanel, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import {
   Bars3Icon,
@@ -8,23 +9,33 @@ import {
   HomeIcon,
   DocumentPlusIcon,
   ClipboardDocumentListIcon,
-  UserIcon
+  UserIcon,
+  ArrowRightOnRectangleIcon
 } from '@heroicons/vue/24/outline'
 
-const navigation = [
-  { name: 'Дашборд', href: '/dashboard', icon: HomeIcon, current: true },
-  { name: 'Создать заявку', href: '/create-order', icon: DocumentPlusIcon, current: false },
-  { name: 'Мои заявки', href: '/orders', icon: ClipboardDocumentListIcon, current: false },
-  { name: 'Профиль', href: '/profile', icon: UserIcon, current: false },
-]
-
-const sidebarOpen = ref(false)
+const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
+const sidebarOpen = ref(false)
+
+const navigation = [
+  { name: 'Дашборд', href: '/dashboard', icon: HomeIcon },
+  { name: 'Создать заявку', href: '/create-order', icon: DocumentPlusIcon },
+  { name: 'Мои заявки', href: '/orders', icon: ClipboardDocumentListIcon },
+  { name: 'Профиль', href: '/profile', icon: UserIcon },
+]
 
 const navigate = (href: string) => {
   router.push(href)
   sidebarOpen.value = false
 }
+
+const handleLogout = async () => {
+    await authStore.logout()
+    router.push('/')
+}
+
+const isActive = (path: string) => route.path === path
 </script>
 
 <template>
@@ -82,8 +93,12 @@ const navigate = (href: string) => {
     <!-- Desktop Sidebar -->
     <div class="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
       <div class="flex grow flex-col gap-y-5 overflow-y-auto bg-slate-900 px-6 pb-4 shadow-2xl">
-        <div class="flex h-20 shrink-0 items-center justify-center border-b border-white/5">
+        <div class="flex h-20 shrink-0 items-center justify-center border-b border-white/5 gap-3">
            <img class="h-9 w-auto hover:opacity-90 transition-opacity" src="/logo/Logo_Novostal_white.webp" alt="Новосталь-М" />
+           <div class="flex flex-col">
+              <span class="text-white font-bold leading-tight">Новосталь-М</span>
+              <span class="text-[10px] text-slate-400 uppercase tracking-wider font-medium">портал заявок</span>
+           </div>
         </div>
         <nav class="flex flex-1 flex-col mt-4">
           <ul role="list" class="flex flex-1 flex-col gap-y-7">
@@ -92,23 +107,31 @@ const navigate = (href: string) => {
                 <li v-for="item in navigation" :key="item.name">
                    <a @click.prevent="navigate(item.href)" 
                       :class="[
-                        item.current 
+                        isActive(item.href)
                         ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-indigo-500/30 ring-1 ring-white/10' 
                         : 'text-slate-400 hover:text-white hover:bg-white/5',
-                        'group flex gap-x-3 rounded-xl p-3 text-sm leading-6 font-medium cursor-pointer transition-all duration-200'
+                        'group flex gap-x-3 rounded-xl p-3 text-sm leading-6 font-medium cursor-pointer transition-all duration-200 select-none'
                       ]">
                     <component :is="item.icon" 
-                        :class="[item.current ? 'text-white' : 'text-slate-500 group-hover:text-white', 'h-6 w-6 shrink-0 transition-colors']" 
+                        :class="[isActive(item.href) ? 'text-white' : 'text-slate-500 group-hover:text-white', 'h-6 w-6 shrink-0 transition-colors']" 
                         aria-hidden="true" />
                     {{ item.name }}
                   </a>
                 </li>
               </ul>
             </li>
+
+            <li class="mt-auto">
+                <button @click="handleLogout" 
+                    class="group -mx-2 flex gap-x-3 rounded-xl p-3 text-sm font-semibold leading-6 text-slate-400 hover:bg-red-500/10 hover:text-red-400 w-full transition-all duration-200 select-none">
+                    <ArrowRightOnRectangleIcon class="h-6 w-6 shrink-0 group-hover:text-red-400 transition-colors" aria-hidden="true" />
+                    Выйти
+                </button>
+            </li>
           </ul>
         </nav>
         <div class="text-xs text-slate-500 text-center pb-4">
-            &copy; 2026 Novostal-M
+            &copy; 2026 Новосталь-М
         </div>
       </div>
     </div>
@@ -124,9 +147,9 @@ const navigate = (href: string) => {
         <div class="h-6 w-px bg-gray-900/10 lg:hidden" aria-hidden="true" />
 
         <div class="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-            <!-- Breadcrumbs or Title could go here -->
+            <!-- Breadcrumbs or Title -->
           <div class="relative flex flex-1 items-center">
-             <!-- Placeholder for future search/breadcrumbs -->
+             <!-- Placeholder -->
           </div>
           <div class="flex items-center gap-x-4 lg:gap-x-6">
             
@@ -138,10 +161,17 @@ const navigate = (href: string) => {
               <button type="button" class="-m-1.5 flex items-center p-1.5 transition-opacity hover:opacity-80" id="user-menu-button">
                 <span class="sr-only">Open user menu</span>
                 <span class="hidden lg:flex lg:items-center">
-                  <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border border-indigo-200">
-                      K
+                  <div class="flex flex-col text-right mr-4">
+                      <span class="text-sm font-semibold leading-tight text-gray-900" aria-hidden="true">
+                        {{ authStore.user?.name || 'Пользователь' }}
+                      </span>
+                      <span v-if="authStore.user?.organization_name" class="text-xs text-gray-500 font-medium">
+                        {{ authStore.user.organization_name }}
+                      </span>
                   </div>
-                  <span class="ml-4 text-sm font-semibold leading-6 text-gray-900" aria-hidden="true">Клиент</span>
+                  <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border border-indigo-200">
+                      {{ authStore.user?.name ? authStore.user.name[0] : 'U' }}
+                  </div>
                 </span>
               </button>
             </div>
@@ -151,7 +181,7 @@ const navigate = (href: string) => {
 
       <main class="py-10 bg-gray-50 min-h-[calc(100vh-4rem)]">
         <div class="px-4 sm:px-6 lg:px-8">
-          <slot></slot>
+            <slot></slot>
         </div>
       </main>
     </div>

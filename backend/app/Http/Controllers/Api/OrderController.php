@@ -36,4 +36,36 @@ class OrderController extends Controller
         $this->authorize('view', $order);
         return $order;
     }
+
+    public function stats(Request $request)
+    {
+        $user = $request->user();
+
+        // Stats for cards
+        $total = $user->orders()->count();
+        $processing = $user->orders()->whereIn('status', ['new', 'processing'])->count();
+        $completed = $user->orders()->where('status', 'completed')->count();
+
+        // Chart data (last 30 days)
+        $chartData = [];
+        $labels = [];
+        
+        for ($i = 29; $i >= 0; $i--) {
+            $date = now()->subDays($i);
+            $labels[] = $date->format('d.m');
+            $chartData[] = $user->orders()
+                ->whereDate('created_at', $date->format('Y-m-d'))
+                ->count();
+        }
+
+        return response()->json([
+            'total' => $total,
+            'processing' => $processing,
+            'completed' => $completed,
+            'chart' => [
+                'labels' => $labels,
+                'data' => $chartData
+            ]
+        ]);
+    }
 }

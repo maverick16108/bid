@@ -34,77 +34,81 @@ const submit = async () => {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto">
-    <div class="mb-6">
-        <button @click="router.back()" class="flex items-center text-sm text-gray-500 hover:text-gray-700 transition-colors">
-            <ArrowLeftIcon class="h-4 w-4 mr-1" />
-            Назад к выбору
-        </button>
-    </div>
+  <div class="max-w-2xl mx-auto py-8 px-4">
+    
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <!-- Card Header -->
+        <div class="flex items-center px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+            <button 
+                @click="router.back()" 
+                class="mr-4 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-slate-200"
+                title="Вернуться назад"
+            >
+                <ArrowLeftIcon class="w-5 h-5" />
+            </button>
+            <h1 class="text-lg font-semibold text-slate-800">Заказ транспорта</h1>
+        </div>
 
-    <div class="bg-white shadow-xl shadow-gray-200/50 rounded-2xl overflow-hidden border border-gray-100">
-      <div class="px-6 py-6 sm:px-10 bg-gray-50/50 border-b border-gray-100">
-          <h1 class="text-2xl font-bold text-gray-900">Заказ транспорта</h1>
-          <p class="mt-1 text-sm text-gray-500">Заполните параметры перевозки</p>
-      </div>
+      <div class="px-8 py-8">
+          <div class="text-center mb-8">
+              <p class="text-slate-500">Заполните параметры перевозки</p>
+          </div>
 
-      <div class="px-6 py-8 sm:px-10">
-        <form @submit.prevent="submit" class="space-y-8">
+        <form @submit.prevent="submit" class="space-y-6 max-w-lg mx-auto">
             
-            <div class="grid grid-cols-1 gap-y-8 gap-x-6 sm:grid-cols-2">
-                
-                <div>
-                    <label for="date" class="block text-sm font-semibold text-gray-700 mb-2">Дата подачи</label>
-                    <div class="relative">
-                        <input type="date" name="date" id="date" v-model="form.date" required 
-                            class="block w-full h-12 rounded-lg border-gray-300 pl-4 text-gray-900 focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm shadow-sm transition-shadow cursor-pointer" />
-                    </div>
-                </div>
-
-                <div>
-                    <label for="vehicle_type" class="block text-sm font-semibold text-gray-700 mb-2">Тип ТС</label>
-                     <select id="vehicle_type" v-model="form.vehicle_type" required 
-                        class="block w-full h-12 rounded-lg border-gray-300 pl-3 pr-10 text-gray-900 focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm shadow-sm transition-shadow cursor-pointer bg-white">
-                        <option value="" disabled>Выберите тип транспорта</option>
-                        <option value="gazelle">Газель (1.5т)</option>
-                        <option value="fura">Фура (20т)</option>
-                        <option value="manipulator">Манипулятор</option>
-                    </select>
-                </div>
-
-                <div class="sm:col-span-2">
-                    <label for="address_from" class="block text-sm font-semibold text-gray-700 mb-2">Откуда</label>
-                    <div class="relative">
-                        <input type="text" name="address_from" id="address_from" v-model="form.address_from" required 
-                            placeholder="Адрес загрузки"
-                            class="block w-full h-12 rounded-lg border-gray-300 pl-4 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm shadow-sm transition-shadow" />
-                    </div>
-                </div>
-
-                <div class="sm:col-span-2">
-                    <label for="address_to" class="block text-sm font-semibold text-gray-700 mb-2">Куда</label>
-                    <div class="relative">
-                        <input type="text" name="address_to" id="address_to" v-model="form.address_to" required 
-                             placeholder="Адрес выгрузки"
-                             class="block w-full h-12 rounded-lg border-gray-300 pl-4 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm shadow-sm transition-shadow" />
-                    </div>
-                </div>
-
-                 <div class="sm:col-span-2">
-                     <label for="comment" class="block text-sm font-semibold text-gray-700 mb-2">Комментарий</label>
-                     <div class="relative">
-                        <textarea id="comment" name="comment" rows="3" v-model="form.comment" 
-                             placeholder="Дополнительные требования к транспорту..."
-                             class="block w-full rounded-lg border-gray-300 pl-4 pt-3 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm shadow-sm transition-shadow"></textarea>
-                     </div>
-                </div>
+            <!-- Date -->
+            <div>
+                <label for="date" class="block text-sm font-medium mb-1.5 text-slate-700">Дата подачи</label>
+                <input type="date" name="date" id="date" v-model="form.date" required 
+                    class="form-input w-full rounded-lg border-slate-300 text-slate-900 focus:border-emerald-500 focus:ring-emerald-500 transition-shadow cursor-pointer" />
             </div>
 
-            <div class="flex justify-end pt-6 border-t border-gray-100">
-                <button type="button" @click="router.back()" class="mr-3 bg-white py-3 px-6 border border-gray-300 rounded-xl shadow-sm text-sm font-bold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors">
-                    Отмена
-                </button>
-                <button type="submit" :disabled="loading" class="inline-flex justify-center py-3 px-6 border border-transparent shadow-lg shadow-emerald-500/30 text-sm font-bold rounded-xl text-white bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all transform hover:-translate-y-0.5">
+            <!-- Vehicle Type -->
+            <div>
+                <label for="vehicle_type" class="block text-sm font-medium mb-1.5 text-slate-700">Тип ТС</label>
+                 <select id="vehicle_type" v-model="form.vehicle_type" required 
+                    class="form-select w-full rounded-lg border-slate-300 text-slate-900 focus:border-emerald-500 focus:ring-emerald-500 transition-shadow cursor-pointer">
+                    <option value="" disabled>Выберите тип транспорта</option>
+                    <option value="gazelle">Газель (1.5т)</option>
+                    <option value="fura">Фура (20т)</option>
+                    <option value="manipulator">Манипулятор</option>
+                </select>
+            </div>
+
+            <!-- From -->
+            <div>
+                <label for="address_from" class="block text-sm font-medium mb-1.5 text-slate-700">Откуда</label>
+                <input type="text" name="address_from" id="address_from" v-model="form.address_from" required 
+                    placeholder="Адрес загрузки"
+                    class="form-input w-full rounded-lg border-slate-300 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-emerald-500 transition-shadow" />
+            </div>
+
+            <!-- To -->
+            <div>
+                <label for="address_to" class="block text-sm font-medium mb-1.5 text-slate-700">Куда</label>
+                <input type="text" name="address_to" id="address_to" v-model="form.address_to" required 
+                     placeholder="Адрес выгрузки"
+                     class="form-input w-full rounded-lg border-slate-300 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-emerald-500 transition-shadow" />
+            </div>
+
+            <!-- Comment -->
+            <div>
+                 <label for="comment" class="block text-sm font-medium mb-1.5 text-slate-700">Комментарий</label>
+                 <textarea id="comment" name="comment" rows="3" v-model="form.comment" 
+                      placeholder="Дополнительные требования к транспорту..."
+                      class="form-textarea w-full rounded-lg border-slate-300 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-emerald-500 transition-shadow"></textarea>
+            </div>
+
+            <div class="pt-4">
+                <button 
+                    type="submit" 
+                    :disabled="loading" 
+                    class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-lg shadow-emerald-500/20 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200 transform hover:-translate-y-0.5"
+                >
+                    <svg v-if="loading" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
                     {{ loading ? 'Отправка...' : 'Отправить заявку' }}
                 </button>
             </div>

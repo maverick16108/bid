@@ -197,10 +197,8 @@ const isActive = (path: string) => route.path.startsWith(path)
         </div>
       </div>
 
-      <main class="py-10 bg-gray-50 min-h-[calc(100vh-4rem)]">
-        <div class="px-4 sm:px-6 lg:px-8">
-            <slot></slot>
-        </div>
+      <main class="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-gray-50 relative">
+        <slot></slot>
       </main>
     </div>
   </div>

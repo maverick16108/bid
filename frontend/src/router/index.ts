@@ -15,6 +15,7 @@ import AdminBidsView from '../views/AdminBidsView.vue'
 import AdminLayout from '../layouts/AdminLayout.vue'
 
 import { useAdminStore } from '@/stores/admin'
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -122,6 +123,19 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   document.title = (to.meta.title as string) || 'Новосталь-М'
   
+  // Client Guard (Non-admin routes that require auth)
+  if (!to.path.startsWith('/admin') && to.meta.requiresAuth) {
+      const authStore = useAuthStore()
+      
+      if (!authStore.token) {
+          return next('/')
+      }
+      
+      if (!authStore.user) {
+          await authStore.fetchUser()
+      }
+  }
+
   // Admin Guard
   if (to.path.startsWith('/admin') && to.name !== 'admin-login') {
       const adminStore = useAdminStore()

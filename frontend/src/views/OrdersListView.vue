@@ -110,6 +110,10 @@ const formatDate = (dateString: string) => {
                             <span class="font-semibold mr-2">Количество:</span>
                             {{ order.details.quantity }} {{ order.details.unit }}
                         </div>
+                        <div v-if="order.details.sum" class="flex items-center text-sm text-gray-600">
+                            <span class="font-semibold mr-2">Сумма:</span>
+                            {{ Number(order.details.sum).toLocaleString('ru-RU') }} ₽
+                        </div>
                     </template>
                     <template v-else>
                         <div class="flex items-center text-sm text-gray-600">

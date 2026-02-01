@@ -16,9 +16,16 @@ const phone = ref('')
 const inn = ref('')
 const organization_name = ref('')
 
-const nameInput = ref<HTMLInputElement | null>(null)
-const emailInput = ref<HTMLInputElement | null>(null)
+const fieldsReadonly = ref({
+    name: true,
+    email: true,
+    phone: true,
+    inn: true,
+    organization_name: true
+})
+
 const phoneInput = ref<HTMLInputElement | null>(null)
+const emailInput = ref<HTMLInputElement | null>(null)
 
 // Validation logic
 const isNameValid = computed(() => name.value.length >= 2)
@@ -93,7 +100,7 @@ const fetchUser = async () => {
         const { data } = await axios.get(`/api/admin/users/${route.params.id}`)
         name.value = data.name
         email.value = data.email
-        phone.value = data.phone
+        processPhoneNumber(data.phone)
         inn.value = data.inn
         organization_name.value = data.organization_name
     } catch (e) {
@@ -157,9 +164,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto py-8 px-4">
-
-
+  <div class="w-full max-w-2xl mx-auto py-8 px-8 transition-colors">
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <!-- Card Header -->
         <div class="flex items-center px-6 py-4 border-b border-slate-100 bg-slate-50/50">
@@ -178,34 +183,58 @@ onUnmounted(() => {
                 <p class="text-slate-500">Измените данные клиента</p>
             </div>
 
-            <div v-if="fetching" class="text-center py-10 text-slate-400">
-                Загрузка данных...
+            <!-- Loading State -->
+            <div v-if="fetching" class="space-y-6 mx-auto animate-pulse">
+                <div>
+                    <div class="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+                    <div class="h-10 bg-gray-200 rounded-lg w-full"></div>
+                </div>
+                <div>
+                    <div class="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                    <div class="h-10 bg-gray-200 rounded-lg w-full"></div>
+                </div>
+                <div>
+                    <div class="h-4 bg-gray-200 rounded w-28 mb-2"></div>
+                    <div class="h-10 bg-gray-200 rounded-lg w-full"></div>
+                </div>
+                <div>
+                    <div class="h-4 bg-gray-200 rounded w-36 mb-2"></div>
+                    <div class="h-10 bg-gray-200 rounded-lg w-full"></div>
+                </div>
+                <div>
+                    <div class="h-4 bg-gray-200 rounded w-20 mb-2"></div>
+                    <div class="h-10 bg-gray-200 rounded-lg w-full"></div>
+                </div>
+                <div class="pt-4">
+                     <div class="h-11 bg-gray-200 rounded-xl w-full"></div>
+                </div>
             </div>
 
-            <form v-else class="space-y-6 max-w-lg mx-auto" @submit.prevent="handleSubmit">
+            <!-- Form from CreateUserView with v-else -->
+            <form v-else class="space-y-6 mx-auto" @submit.prevent="handleSubmit">
                 <!-- Name -->
                 <div>
                     <label for="name" class="block text-sm font-medium mb-1.5 text-slate-700">Имя Фамилия</label>
                     <input 
-                        ref="nameInput"
                         id="name" 
                         type="text" 
                         required 
                         autocomplete="off"
                         v-model="name"
+                        :readonly="fieldsReadonly.name"
+                        @focus="fieldsReadonly.name = false"
                         placeholder="Иван Иванов" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow"
                         :class="{
-                             'focus:border-indigo-500 focus:ring-indigo-500': !isNameValid,
+                             'focus:border-indigo-500 focus:ring-indigo-500': !isNameValid || !touched.name,
                              '!text-red-600': touched.name && !isNameValid,
-                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': isNameValid,
-                             '!text-slate-900': !isNameValid && !touched.name,
+                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': touched.name && isNameValid,
+                             '!text-slate-900': !touched.name,
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': touched.name && !isNameValid,
-                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': isNameValid
+                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': touched.name && isNameValid
                         }"
-                        @focus="touched.name = false"
                         @blur="touched.name = true"
-                        :style="{ '--autofill-color': isNameValid ? '#16a34a' : ((touched.name && !isNameValid) ? '#dc2626' : '#0f172a') } as any"
+                        :style="{ '--autofill-color': (touched.name && isNameValid) ? '#16a34a' : ((touched.name && !isNameValid) ? '#dc2626' : '#0f172a') } as any"
                     />
                 </div>
 
@@ -218,19 +247,20 @@ onUnmounted(() => {
                         required 
                         autocomplete="off"
                         v-model="organization_name"
+                        :readonly="fieldsReadonly.organization_name"
+                        @focus="fieldsReadonly.organization_name = false"
                         placeholder="ООО Новосталь-М" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow"
                         :class="{
-                             'focus:border-indigo-500 focus:ring-indigo-500': !isOrgValid,
+                             'focus:border-indigo-500 focus:ring-indigo-500': !isOrgValid || !touched.organization_name,
                              '!text-red-600': touched.organization_name && !isOrgValid,
-                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': isOrgValid,
-                             '!text-slate-900': !isOrgValid && !touched.organization_name,
+                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': touched.organization_name && isOrgValid,
+                             '!text-slate-900': !touched.organization_name,
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': touched.organization_name && !isOrgValid,
-                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': isOrgValid
+                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': touched.organization_name && isOrgValid
                         }"
-                        @focus="touched.organization_name = false"
                         @blur="touched.organization_name = true"
-                        :style="{ '--autofill-color': isOrgValid ? '#16a34a' : ((touched.organization_name && !isOrgValid) ? '#dc2626' : '#0f172a') } as any"
+                        :style="{ '--autofill-color': (touched.organization_name && isOrgValid) ? '#16a34a' : ((touched.organization_name && !isOrgValid) ? '#dc2626' : '#0f172a') } as any"
                     />
                 </div>
 
@@ -244,20 +274,21 @@ onUnmounted(() => {
                         autocomplete="off"
                         v-model="inn"
                         maxlength="12"
+                        :readonly="fieldsReadonly.inn"
+                        @focus="fieldsReadonly.inn = false"
                         @input="inn = inn.replace(/\D/g, '')"
                         placeholder="7700000000" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow"
                         :class="{
-                             'focus:border-indigo-500 focus:ring-indigo-500': !isInnValid,
+                             'focus:border-indigo-500 focus:ring-indigo-500': !isInnValid || !touched.inn,
                              '!text-red-600': touched.inn && !isInnValid,
-                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': isInnValid,
-                             '!text-slate-900': !isInnValid && !touched.inn,
+                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': touched.inn && isInnValid,
+                             '!text-slate-900': !touched.inn,
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': touched.inn && !isInnValid,
-                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': isInnValid
+                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': touched.inn && isInnValid
                         }"
-                        @focus="touched.inn = false"
                         @blur="touched.inn = true"
-                        :style="{ '--autofill-color': isInnValid ? '#16a34a' : ((touched.inn && !isInnValid) ? '#dc2626' : '#0f172a') } as any"
+                        :style="{ '--autofill-color': (touched.inn && isInnValid) ? '#16a34a' : ((touched.inn && !isInnValid) ? '#dc2626' : '#0f172a') } as any"
                     />
                 </div>
 
@@ -271,21 +302,22 @@ onUnmounted(() => {
                         required 
                         autocomplete="off"
                         :value="phone"
+                        :readonly="fieldsReadonly.phone"
+                        @focus="fieldsReadonly.phone = false; touched.phone = false; serverErrors.phone = ''"
                         @input="handlePhoneInput"
                         @keydown="handlePhoneKeydown"
-                        @focus="touched.phone = false; serverErrors.phone = ''"
                         @blur="touched.phone = true"
                         placeholder="+7 (999) 000-00-00" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow font-mono"
                         :class="{
-                             'focus:border-indigo-500 focus:ring-indigo-500': !isPhoneValid && !serverErrors.phone,
+                             'focus:border-indigo-500 focus:ring-indigo-500': (!isPhoneValid && !serverErrors.phone) || !touched.phone,
                              '!text-red-600': (touched.phone && !isPhoneValid) || serverErrors.phone,
-                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': isPhoneValid && !serverErrors.phone,
-                             '!text-slate-900': !isPhoneValid && !touched.phone && !serverErrors.phone,
+                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': touched.phone && isPhoneValid && !serverErrors.phone,
+                             '!text-slate-900': !touched.phone && !serverErrors.phone,
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': (touched.phone && !isPhoneValid) || serverErrors.phone,
-                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': isPhoneValid && !serverErrors.phone
+                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': touched.phone && isPhoneValid && !serverErrors.phone
                         }"
-                        :style="{ '--autofill-color': (isPhoneValid && !serverErrors.phone) ? '#16a34a' : (((touched.phone && !isPhoneValid) || serverErrors.phone) ? '#dc2626' : '#0f172a') } as any"
+                        :style="{ '--autofill-color': (touched.phone && isPhoneValid && !serverErrors.phone) ? '#16a34a' : (((touched.phone && !isPhoneValid) || serverErrors.phone) ? '#dc2626' : '#0f172a') } as any"
                     />
                 </div>
 
@@ -298,19 +330,20 @@ onUnmounted(() => {
                         type="email" 
                         autocomplete="off"
                         v-model="email"
+                        :readonly="fieldsReadonly.email"
+                        @focus="fieldsReadonly.email = false; touched.email = false; serverErrors.email = ''"
+                        @blur="touched.email = true"
                         placeholder="client@company.com" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow"
                         :class="{
-                             'focus:border-indigo-500 focus:ring-indigo-500': (!email || isEmailValid) && !serverErrors.email,
+                             'focus:border-indigo-500 focus:ring-indigo-500': ((!email || isEmailValid) && !serverErrors.email) || !touched.email,
                              '!text-red-600': (touched.email && email && !isEmailValid) || serverErrors.email,
-                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': email && isEmailValid && !serverErrors.email,
-                             '!text-slate-900': ((!email || !isEmailValid) && !touched.email && !serverErrors.email),
+                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': touched.email && email && isEmailValid && !serverErrors.email,
+                             '!text-slate-900': !touched.email && !serverErrors.email,
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': (touched.email && email && !isEmailValid) || serverErrors.email,
-                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': email && isEmailValid && !serverErrors.email
+                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': touched.email && email && isEmailValid && !serverErrors.email
                         }"
-                        @focus="touched.email = false; serverErrors.email = ''"
-                        @blur="touched.email = true"
-                        :style="{ '--autofill-color': (email && isEmailValid && !serverErrors.email) ? '#16a34a' : (((touched.email && email && !isEmailValid) || serverErrors.email) ? '#dc2626' : '#0f172a') } as any"
+                        :style="{ '--autofill-color': (touched.email && email && isEmailValid && !serverErrors.email) ? '#16a34a' : (((touched.email && email && !isEmailValid) || serverErrors.email) ? '#dc2626' : '#0f172a') } as any"
                     />
                 </div>
 

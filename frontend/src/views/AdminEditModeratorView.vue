@@ -15,10 +15,16 @@ const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 
+const fieldsReadonly = ref({
+    name: true,
+    email: true,
+    password: true,
+    confirmPassword: true
+})
+
 const nameInput = ref<HTMLInputElement | null>(null)
 const emailInput = ref<HTMLInputElement | null>(null)
 const passwordInput = ref<HTMLInputElement | null>(null)
-let autofillInterval: number | null = null
 
 // Validation logic
 const isNameValid = computed(() => name.value.length >= 2)
@@ -108,17 +114,15 @@ const handleKeydown = (e: KeyboardEvent) => {
     }
 }
 
+
+
 onUnmounted(() => {
     document.removeEventListener('keydown', handleKeydown)
 })
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto py-8 px-4">
-      <!-- Better Back Navigation -->
-
-
-
+  <div class="w-full max-w-2xl mx-auto py-8 px-8">
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <!-- Card Header -->
         <div class="flex items-center px-6 py-4 border-b border-slate-100 bg-slate-50/50">
@@ -129,7 +133,7 @@ onUnmounted(() => {
             >
                 <ArrowLeftIcon class="w-5 h-5" />
             </button>
-            <h1 class="text-lg font-semibold text-slate-800">Редактирование модератора</h1>
+            <h1 class="text-lg font-semibold text-slate-800">Редактирование сотрудника</h1>
         </div>
 
         <div class="px-8 py-8">
@@ -137,11 +141,27 @@ onUnmounted(() => {
                 <p class="text-slate-500">Измените данные сотрудника</p>
             </div>
 
-            <div v-if="fetching" class="text-center py-10 text-slate-400">
-                Загрузка данных...
+            <!-- Loading State -->
+            <div v-if="fetching" class="space-y-6 mx-auto animate-pulse">
+                <div>
+                    <div class="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+                    <div class="h-10 bg-gray-200 rounded-lg w-full"></div>
+                </div>
+                <div>
+                    <div class="h-4 bg-gray-200 rounded w-16 mb-2"></div>
+                    <div class="h-10 bg-gray-200 rounded-lg w-full"></div>
+                </div>
+                <div>
+                    <div class="h-4 bg-gray-200 rounded w-36 mb-2"></div>
+                    <div class="h-10 bg-gray-200 rounded-lg w-full"></div>
+                </div>
+                <div class="pt-4">
+                     <div class="h-11 bg-gray-200 rounded-xl w-full"></div>
+                </div>
             </div>
 
-            <form v-else class="space-y-6 max-w-lg mx-auto" @submit.prevent="handleSubmit">
+            <!-- Form from CreateModeratorView with v-else -->
+            <form v-else class="space-y-6 mx-auto" @submit.prevent="handleSubmit">
                 <!-- Name -->
                 <div>
                     <label for="name" class="block text-sm font-medium mb-1.5 text-slate-700">Имя Фамилия</label>
@@ -152,25 +172,26 @@ onUnmounted(() => {
                         required 
                         autocomplete="off"
                         v-model="name"
-                        placeholder="Иван Иванов" 
+                        :readonly="fieldsReadonly.name"
+                        @focus="fieldsReadonly.name = false; touched.name = false"
+                        placeholder="Петр Петров" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow"
                         :class="{
-                             'focus:border-indigo-500 focus:ring-indigo-500': !isNameValid,
+                             'focus:border-indigo-500 focus:ring-indigo-500': !isNameValid || !touched.name,
                              '!text-red-600': touched.name && !isNameValid,
-                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': isNameValid,
-                             '!text-slate-900': !isNameValid && !touched.name,
+                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': touched.name && isNameValid,
+                             '!text-slate-900': !touched.name,
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': touched.name && !isNameValid,
-                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': isNameValid
+                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': touched.name && isNameValid
                         }"
-                        @focus="touched.name = false"
                         @blur="touched.name = true"
-                        :style="{ '--autofill-color': isNameValid ? '#16a34a' : ((touched.name && !isNameValid) ? '#dc2626' : '#0f172a') } as any"
+                        :style="{ '--autofill-color': (touched.name && isNameValid) ? '#16a34a' : ((touched.name && !isNameValid) ? '#dc2626' : '#0f172a') } as any"
                     />
                 </div>
 
                 <!-- Email -->
                 <div>
-                    <label for="email" class="block text-sm font-medium mb-1.5 text-slate-700">Email</label>
+                    <label for="email" class="block text-sm font-medium mb-1.5 text-slate-700">Email (Логин)</label>
                     <input 
                         ref="emailInput"
                         id="email" 
@@ -178,19 +199,20 @@ onUnmounted(() => {
                         required 
                         autocomplete="off"
                         v-model="email"
-                        placeholder="sotrudnik@novostal.ru" 
+                        :readonly="fieldsReadonly.email"
+                        @focus="fieldsReadonly.email = false; touched.email = false; serverErrors.email = ''"
+                        @blur="touched.email = true"
+                        placeholder="staff@novostal.ru" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow"
                         :class="{
-                             'focus:border-indigo-500 focus:ring-indigo-500': !isEmailValid && !serverErrors.email,
+                             'focus:border-indigo-500 focus:ring-indigo-500': (!isEmailValid && !serverErrors.email) || !touched.email,
                              '!text-red-600': (touched.email && !isEmailValid) || serverErrors.email,
-                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': isEmailValid && !serverErrors.email,
-                             '!text-slate-900': !isEmailValid && !touched.email && !serverErrors.email,
+                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': touched.email && isEmailValid && !serverErrors.email,
+                             '!text-slate-900': !touched.email && !serverErrors.email,
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': (touched.email && !isEmailValid) || serverErrors.email,
-                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': isEmailValid && !serverErrors.email
+                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': touched.email && isEmailValid && !serverErrors.email
                         }"
-                        @focus="touched.email = false; serverErrors.email = ''"
-                        @blur="touched.email = true"
-                        :style="{ '--autofill-color': (isEmailValid && !serverErrors.email) ? '#16a34a' : (((touched.email && !isEmailValid) || serverErrors.email) ? '#dc2626' : '#0f172a') } as any"
+                        :style="{ '--autofill-color': (touched.email && isEmailValid && !serverErrors.email) ? '#16a34a' : (((touched.email && !isEmailValid) || serverErrors.email) ? '#dc2626' : '#0f172a') } as any"
                     />
                 </div>
 
@@ -203,20 +225,20 @@ onUnmounted(() => {
                         type="password" 
                         autocomplete="new-password"
                         v-model="password"
-                        readonly
+                        :readonly="fieldsReadonly.password"
+                        @focus="fieldsReadonly.password = false; touched.password = false"
+                        @blur="touched.password = true"
                         placeholder="••••••••" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow"
                         :class="{
-                             'focus:border-indigo-500 focus:ring-indigo-500': !password || isPasswordStrong,
+                             'focus:border-indigo-500 focus:ring-indigo-500': (!password || isPasswordStrong) || !touched.password,
                              '!text-red-600': touched.password && password && !isPasswordStrong,
-                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': password && isPasswordStrong,
-                             '!text-slate-900': (!isPasswordStrong && !touched.password) || !password,
+                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': touched.password && password && isPasswordStrong,
+                             '!text-slate-900': !touched.password || !password,
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': touched.password && password && !isPasswordStrong,
-                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': password && isPasswordStrong
+                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': touched.password && password && isPasswordStrong
                         }"
-                        @focus="touched.password = false; $event.target.removeAttribute('readonly')"
-                        @blur="touched.password = true"
-                        :style="{ '--autofill-color': (password && isPasswordStrong) ? '#16a34a' : ((touched.password && password && !isPasswordStrong) ? '#dc2626' : '#0f172a') } as any"
+                        :style="{ '--autofill-color': (touched.password && password && isPasswordStrong) ? '#16a34a' : ((touched.password && password && !isPasswordStrong) ? '#dc2626' : '#0f172a') } as any"
                     />
                     <p class="mt-2 text-xs text-slate-500">
                         <span v-if="!password">Оставьте пустым, если не хотите менять пароль</span>
@@ -246,16 +268,16 @@ onUnmounted(() => {
                             placeholder="••••••••" 
                             class="form-input w-full rounded-lg border-slate-300 transition-shadow"
                             :class="{
-                                 'focus:border-indigo-500 focus:ring-indigo-500': doPasswordsMatch && isPasswordStrong,
+                                 'focus:border-indigo-500 focus:ring-indigo-500': (doPasswordsMatch && isPasswordStrong) || !touched.confirmPassword,
                                  '!text-red-600': touched.confirmPassword && (!doPasswordsMatch || !isPasswordStrong),
-                                 '!text-green-600 font-bold drop-shadow-sm shadow-green-200': doPasswordsMatch && isPasswordStrong,
-                                 '!text-slate-900': (doPasswordsMatch && isPasswordStrong) && !touched.confirmPassword,
+                                 '!text-green-600 font-bold drop-shadow-sm shadow-green-200': touched.confirmPassword && doPasswordsMatch && isPasswordStrong,
+                                 '!text-slate-900': !touched.confirmPassword,
                                  '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': touched.confirmPassword && (!doPasswordsMatch || !isPasswordStrong),
-                                 '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': doPasswordsMatch && isPasswordStrong
+                                 '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': touched.confirmPassword && doPasswordsMatch && isPasswordStrong
                             }"
                             @focus="touched.confirmPassword = false"
                             @blur="touched.confirmPassword = true"
-                            :style="{ '--autofill-color': (doPasswordsMatch && isPasswordStrong) ? '#16a34a' : ((touched.confirmPassword && (!doPasswordsMatch || !isPasswordStrong)) ? '#dc2626' : '#0f172a') } as any"
+                            :style="{ '--autofill-color': (touched.confirmPassword && doPasswordsMatch && isPasswordStrong) ? '#16a34a' : ((touched.confirmPassword && (!doPasswordsMatch || !isPasswordStrong)) ? '#dc2626' : '#0f172a') } as any"
                         />
                         <p v-if="touched.confirmPassword && !doPasswordsMatch" class="mt-1 text-xs text-red-600">Пароли не совпадают</p>
                         <p v-else-if="touched.confirmPassword && !isPasswordStrong" class="mt-1 text-xs text-red-600">Пароль недостаточно надежный</p>

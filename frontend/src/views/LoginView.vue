@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -13,6 +13,13 @@ const authStore = useAuthStore()
 
 // Ссылка на DOM элемент инпута
 const phoneInput = ref<HTMLInputElement | null>(null)
+// codeInput replaced by otpInputs inside handleDigit logic
+
+watch(step, async (newStep) => {
+    if (newStep === 'otp') {
+        // Was handled in new logic block
+    }
+})
 let autofillInterval: number | null = null
 
 // Валидация
@@ -123,46 +130,139 @@ const handlePhoneSubmit = async () => {
     // Но input type="tel" в форме и кнопка submit сработают.
   error.value = ''
   if (!isPhoneValid.value) {
-     // Можно не показывать ошибку если просто пусто, но тут лучше показать
       error.value = 'Введите корректный номер телефона'
-      // Возвращаем фокус на поле
       phoneInput.value?.focus()
       return
   }
   
   loading.value = true
   try {
-    // Имитация задержки API
-    await new Promise(r => setTimeout(r, 600))
-    
     // Демонстрационный бэкдор
     if (phone.value.includes('000-00-00')) { // +7 (999) 000-00-00
         step.value = 'success'
     } else {
-        await authStore.login(phone.value)
-        router.push('/dashboard')
+        await authStore.sendCode(phone.value)
+        step.value = 'otp'
     }
-  } catch (e) {
-      error.value = 'Ошибка отправки SMS. Попробуйте еще раз.'
-      // Возвращаем фокус на поле при ошибке
+  } catch (e: any) {
+      error.value = e.response?.data?.message || 'Ошибка отправки SMS. Попробуйте еще раз.'
       phoneInput.value?.focus()
   } finally {
       loading.value = false
   }
 }
 
+const otpInputs = ref<HTMLInputElement[]>([])
+
+watch(step, async (newStep) => {
+    if (newStep === 'otp') {
+        code.value = ''
+        await nextTick()
+        otpInputs.value[0]?.focus()
+    }
+})
+
+// ... other code ...
+
+const handleDigitInput = (event: Event, index: number) => {
+    const input = event.target as HTMLInputElement
+    const val = input.value
+
+    // Allow only digits
+    if (!/^\d*$/.test(val)) return
+
+    // Handle Autofill / Full Code Paste into one field
+    // Mac SMS autofill usually types the whole code into the focused field
+    if (val.length === 4) {
+        code.value = val
+        otpInputs.value.forEach(el => el.blur())
+        handleOtpSubmit()
+        return
+    }
+
+    // Normal single digit entry
+    const currentCodeArr = code.value.split('')
+    while (currentCodeArr.length < 4) currentCodeArr.push('')
+    
+    // Take the last char if it's a new single entry
+    const char = val.slice(-1)
+    currentCodeArr[index] = char
+    code.value = currentCodeArr.join('').substring(0, 4)
+
+    // Auto-focus next
+    if (char && index < 3) {
+        otpInputs.value[index + 1]?.focus()
+    }
+
+    // Auto-submit if full
+    if (code.value.length === 4) {
+        otpInputs.value.forEach(el => el.blur())
+        handleOtpSubmit()
+    }
+}
+
+const handleDigitKeydown = (event: KeyboardEvent, index: number) => {
+    // Backspace handling
+    if (event.key === 'Backspace') {
+        const currentCodeArr = code.value.split('') // don't fill with empty yet
+        
+        // If current input is empty, move back and delete previous
+        if (!currentCodeArr[index] && index > 0) {
+            otpInputs.value[index - 1]?.focus()
+            // Logic to clear previous value will happen on standard backspace in that input? 
+            // Actually standard backspace behavior deletes current char. 
+            // If current is empty, we want to focus PREV.
+        }
+        // If current has value, standard behavior clears it. 
+        // We rely on input event update to sync model.
+    }
+}
+
+// Special Paste Handler
+const handleOtpPaste = (event: ClipboardEvent) => {
+    const pasteData = event.clipboardData?.getData('text')
+    if (!pasteData) return
+    
+    const digits = pasteData.replace(/\D/g, '').substring(0, 4).split('')
+    
+    // Update model
+    code.value = digits.join('')
+    
+    // Update inputs visual state (though v-bind :value should handle it)
+    // Focus last filled or first empty
+    const nextIndex = Math.min(digits.length, 3)
+    // Wait for vue update
+    nextTick(() => {
+         // Auto submit if 4 digits
+         if (digits.length === 4) {
+             otpInputs.value.forEach(el => el.blur())
+             handleOtpSubmit()
+         } else {
+             otpInputs.value[nextIndex]?.focus()
+         }
+    })
+}
+
 const handleOtpSubmit = async () => {
     error.value = ''
-    if(!isOtpValid.value) {
-        error.value = 'Код должен содержать 4 цифры'
+    if(code.value.length !== 4) {
+        // Only show error if manual submit attempt (which is hidden now) or logic fail
+        // But auto-submit is only on length 4.
         return
     }
 
     loading.value = true
-    setTimeout(() => {
-        loading.value = false
+    try {
+        await authStore.login(phone.value, code.value)
         router.push('/dashboard')
-    }, 800)
+    } catch (e: any) {
+        error.value = e.response?.data?.message || 'Неверный код'
+        code.value = '' // Clear code on error so user can retype
+        await nextTick()
+        otpInputs.value[0]?.focus()
+    } finally {
+        loading.value = false
+    }
 }
 
 // Проверка на автозаполнение
@@ -264,37 +364,39 @@ onUnmounted(() => {
             </div>
 
             <form class="space-y-6" @submit.prevent="handleOtpSubmit">
-                <div>
+                <div class="flex justify-center gap-3">
                     <input 
-                        id="code" 
-                        name="code" 
+                        v-for="(digit, index) in 4"
+                        :key="index"
+                        :ref="(el) => { if (el) otpInputs[index] = el as HTMLInputElement }"
                         type="text" 
-                        autocomplete="one-time-code" 
+                        inputmode="numeric"
+                        pattern="\d*"
+                        maxlength="1"
+                        autocomplete="one-time-code"
                         required 
-                        v-model="code" 
-                        class="text-center font-mono tracking-[0.5em] text-2xl font-bold"
-                        placeholder="0000"
+                        :value="code[index] || ''" 
+                        @input="(e) => handleDigitInput(e, index)"
+                        @keydown="(e) => handleDigitKeydown(e, index)"
+                        @paste="handleOtpPaste"
+                        class="p-0 text-center text-xl sm:text-2xl font-bold font-mono rounded-lg border border-gray-300 bg-white text-slate-900 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/50 focus:shadow-md outline-none transition-all duration-200 relative z-0 focus:z-10 caret-transparent"
+                        style="width: 52px; height: 44px;"
+                        placeholder=""
                     />
                 </div>
 
-                <div v-if="error" class="text-sm text-center font-medium text-red-600 bg-red-50 p-2 rounded-lg border border-red-100">
+                <div v-if="error" class="text-sm text-center font-medium text-red-600 bg-red-50 p-2 rounded-lg border border-red-100 animate-pulse">
                     {{ error }}
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 gap-3">
+                     <!-- "Войти" button removed as requested -->
                     <button 
                         type="button" 
                         @click="step = 'phone'" 
-                        class="flex w-full justify-center rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors border bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                        class="flex w-full justify-center rounded-xl px-4 py-3 text-sm font-semibold shadow-sm transition-colors border bg-white text-slate-600 border-gray-200 hover:bg-gray-50 hover:text-slate-900"
                     >
                         Назад
-                    </button>
-                    <button 
-                        type="submit" 
-                        :disabled="loading" 
-                        class="btn-primary w-full"
-                    >
-                        {{ loading ? '...' : 'Войти' }}
                     </button>
                 </div>
             </form>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
@@ -13,6 +13,14 @@ const email = ref('')
 const phone = ref('')
 const inn = ref('')
 const organization_name = ref('')
+
+const fieldsReadonly = ref({
+    name: true,
+    email: true,
+    phone: true,
+    inn: true,
+    organization_name: true
+})
 
 const nameInput = ref<HTMLInputElement | null>(null)
 const emailInput = ref<HTMLInputElement | null>(null)
@@ -139,8 +147,6 @@ onMounted(() => {
     document.addEventListener('keydown', handleKeydown)
 })
 
-import { onUnmounted } from 'vue'
-
 const handleKeydown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
         router.back()
@@ -153,7 +159,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto py-8 px-4">
+  <div class="w-full max-w-2xl mx-auto py-8 px-8">
 
 
 
@@ -175,7 +181,7 @@ onUnmounted(() => {
                 <p class="text-slate-500">Заполните данные для создания учетной записи клиента</p>
             </div>
 
-            <form class="space-y-6 max-w-lg mx-auto" @submit.prevent="handleSubmit">
+            <form class="space-y-6 mx-auto" @submit.prevent="handleSubmit">
                 <!-- Dummy inputs -->
                 <input type="text" style="display:none" />
                 <input type="password" style="display:none" />
@@ -190,6 +196,8 @@ onUnmounted(() => {
                         required 
                         autocomplete="off"
                         v-model="name"
+                        :readonly="fieldsReadonly.name"
+                        @focus="fieldsReadonly.name = false; touched.name = false"
                         placeholder="Иван Иванов" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow"
                         :class="{
@@ -200,7 +208,6 @@ onUnmounted(() => {
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': touched.name && !isNameValid,
                              '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': isNameValid
                         }"
-                        @focus="touched.name = false"
                         @blur="touched.name = true"
                         :style="{ '--autofill-color': isNameValid ? '#16a34a' : ((touched.name && !isNameValid) ? '#dc2626' : '#0f172a') } as any"
                     />
@@ -215,6 +222,8 @@ onUnmounted(() => {
                         required 
                         autocomplete="off"
                         v-model="organization_name"
+                        :readonly="fieldsReadonly.organization_name"
+                        @focus="fieldsReadonly.organization_name = false; touched.organization_name = false;"
                         placeholder="ООО Новосталь-М" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow"
                         :class="{
@@ -225,7 +234,6 @@ onUnmounted(() => {
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': touched.organization_name && !isOrgValid,
                              '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': isOrgValid
                         }"
-                        @focus="touched.organization_name = false"
                         @blur="touched.organization_name = true"
                         :style="{ '--autofill-color': isOrgValid ? '#16a34a' : ((touched.organization_name && !isOrgValid) ? '#dc2626' : '#0f172a') } as any"
                     />
@@ -241,6 +249,8 @@ onUnmounted(() => {
                         autocomplete="off"
                         v-model="inn"
                         maxlength="12"
+                        :readonly="fieldsReadonly.inn"
+                        @focus="fieldsReadonly.inn = false; touched.inn = false;"
                         @input="inn = inn.replace(/\D/g, '')"
                         placeholder="7700000000" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow"
@@ -252,7 +262,6 @@ onUnmounted(() => {
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': touched.inn && !isInnValid,
                              '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': isInnValid
                         }"
-                        @focus="touched.inn = false"
                         @blur="touched.inn = true"
                         :style="{ '--autofill-color': isInnValid ? '#16a34a' : ((touched.inn && !isInnValid) ? '#dc2626' : '#0f172a') } as any"
                     />
@@ -268,9 +277,10 @@ onUnmounted(() => {
                         required 
                         autocomplete="off"
                         :value="phone"
+                        :readonly="fieldsReadonly.phone"
+                        @focus="fieldsReadonly.phone = false; touched.phone = false; serverErrors.phone = ''"
                         @input="handlePhoneInput"
                         @keydown="handlePhoneKeydown"
-                        @focus="touched.phone = false; serverErrors.phone = ''"
                         @blur="touched.phone = true"
                         placeholder="+7 (999) 000-00-00" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow font-mono"
@@ -292,9 +302,13 @@ onUnmounted(() => {
                     <input 
                         ref="emailInput"
                         id="email" 
-                        type="email" 
+                        type="email"
+                        required 
                         autocomplete="off"
                         v-model="email"
+                        :readonly="fieldsReadonly.email"
+                        @focus="fieldsReadonly.email = false; touched.email = false; serverErrors.email = ''"
+                        @blur="touched.email = true"
                         placeholder="client@company.com" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow"
                         :class="{
@@ -305,8 +319,6 @@ onUnmounted(() => {
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': (touched.email && email && !isEmailValid) || serverErrors.email,
                              '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': email && isEmailValid && !serverErrors.email
                         }"
-                        @focus="touched.email = false; serverErrors.email = ''"
-                        @blur="touched.email = true"
                         :style="{ '--autofill-color': (email && isEmailValid && !serverErrors.email) ? '#16a34a' : (((touched.email && email && !isEmailValid) || serverErrors.email) ? '#dc2626' : '#0f172a') } as any"
                     />
                 </div>

@@ -30,7 +30,32 @@ export const useAdminStore = defineStore('admin', () => {
   }
   const user = ref<AdminUser | null>(null)
 
-  const router = useRouter()
+  // Persistence State
+  const usersListState = ref({
+      search: '',
+      page: 1,
+      sortField: 'created_at',
+      sortDirection: 'desc',
+      scrollY: 0
+  })
+
+  const moderatorsListState = ref({
+      search: '',
+      page: 1,
+      sortField: 'created_at',
+      sortDirection: 'desc',
+      scrollY: 0
+  })
+
+  const bidsListState = ref({
+      search: '',
+      page: 1,
+      sortField: 'created_at',
+      sortDirection: 'desc',
+      scrollY: 0
+  })
+
+
 
   const isMaster = computed(() => user.value?.role === 'master' || user.value?.email === 'admin@novostal.ru')
 
@@ -86,9 +111,10 @@ export const useAdminStore = defineStore('admin', () => {
       return data
   }
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (params: any = {}) => {
       const { data } = await axios.get(`${API_URL}/admin/users`, {
-           headers: { Authorization: `Bearer ${token.value}` }
+           headers: { Authorization: `Bearer ${token.value}` },
+           params
       })
       return data
   }
@@ -99,9 +125,10 @@ export const useAdminStore = defineStore('admin', () => {
       })
   }
 
-  const fetchBids = async () => {
+  const fetchBids = async (params: any = {}) => {
       const { data } = await axios.get(`${API_URL}/admin/bids`, {
-           headers: { Authorization: `Bearer ${token.value}` }
+           headers: { Authorization: `Bearer ${token.value}` },
+           params
       })
       return data
   }
@@ -112,9 +139,10 @@ export const useAdminStore = defineStore('admin', () => {
       })
   }
 
-  const fetchModerators = async () => {
+  const fetchModerators = async (params: any = {}) => {
       const { data } = await axios.get(`${API_URL}/admin/moderators`, {
-           headers: { Authorization: `Bearer ${token.value}` }
+           headers: { Authorization: `Bearer ${token.value}` },
+           params
       })
       return data
   }
@@ -152,6 +180,9 @@ export const useAdminStore = defineStore('admin', () => {
     deleteBid,
     fetchModerators,
     createModerator,
-    deleteModerator
+    deleteModerator,
+    usersListState,
+    moderatorsListState,
+    bidsListState
   }
 })

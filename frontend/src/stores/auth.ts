@@ -10,9 +10,18 @@ export const useAuthStore = defineStore('auth', {
         isAuthenticated: (state) => !!state.token,
     },
     actions: {
-        async login(phone: string) {
+        async sendCode(phone: string) {
             try {
-                const response = await api.post('/login', { phone });
+                await api.post('/auth/send-code', { phone });
+                return true;
+            } catch (error) {
+                console.error('Send code failed', error);
+                throw error;
+            }
+        },
+        async login(phone: string, code: string) {
+            try {
+                const response = await api.post('/login', { phone, code });
                 const { access_token, user } = response.data;
                 
                 this.token = access_token;

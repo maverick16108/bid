@@ -17,12 +17,12 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: process.env.VITE_API_TARGET || 'http://bid_backend:8000',
         changeOrigin: true,
         secure: false,
       },
       '/sanctum/csrf-cookie': {
-        target: 'http://localhost:8000',
+        target: process.env.VITE_API_TARGET || 'http://bid_backend:8000',
         changeOrigin: true,
         secure: false,
       }

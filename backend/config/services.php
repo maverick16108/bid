@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'smsc' => [
+        'login' => env('SMSC_LOGIN'),
+        'password' => env('SMSC_PASSWORD'),
+        'enabled' => env('SMSC_ENABLED', true),
+    ],
+
 ];

@@ -74,7 +74,7 @@ class AdminController extends Controller
         return $request->user();
     }
 
-    public function indexModerators()
+    public function indexModerators(Request $request)
     {
         // Self-heal: Ensure Master Admin exists in the list
         $masterEmail = config('admin.master_email');
@@ -86,14 +86,37 @@ class AdminController extends Controller
             ]);
         }
 
-        return Moderator::orderBy('created_at', 'desc')->get();
+        $query = Moderator::query();
+
+        // Search
+        // Search
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'ilike', "%{$search}%")
+                  ->orWhere('email', 'ilike', "%{$search}%")
+                  ->orWhereRaw("TO_CHAR(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Moscow', 'DD.MM.YYYY') ILIKE ?", ["%{$search}%"]);
+            });
+        }
+
+        // Sorting
+        $sortField = $request->input('sort_field', 'created_at');
+        $sortDirection = $request->input('sort_direction', 'desc');
+        $allowedSorts = ['id', 'name', 'email', 'created_at'];
+
+        if (in_array($sortField, $allowedSorts)) {
+            $query->orderBy($sortField, $sortDirection === 'asc' ? 'asc' : 'desc');
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        // Pagination
+        $perPage = $request->input('per_page', 10);
+        return $query->paginate($perPage);
     }
 
     public function storeModerator(Request $request)
     {
-        // Ensure only master admin can add moderators
-        // For simplicity, we assume the route is protected by 'ability:master' or similar check
-        // Or we check email matching master here?
         if ($request->user()->email !== config('admin.master_email')) {
              return response()->json(['message' => 'Unauthorized'], 403);
         }
@@ -103,9 +126,9 @@ class AdminController extends Controller
             'password' => [
                 'required',
                 'min:10',
-                'regex:/[a-z]/',      // Must contain lowercase letters
-                'regex:/[A-Z]/',      // Must contain uppercase letters
-                'regex:/[0-9]/',      // Must contain numbers
+                'regex:/[a-z]/',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
             ],
             'name' => 'required|string',
         ], [
@@ -186,7 +209,6 @@ class AdminController extends Controller
         
         $moderator = Moderator::findOrFail($id);
         
-        // Protect Master Admin deletion via API (checking if email matches config master email)
         if ($moderator->email === config('admin.master_email')) {
             return response()->json(['message' => 'Cannot delete master admin'], 403);
         }
@@ -200,11 +222,21 @@ class AdminController extends Controller
         $usersCount = \App\Models\User::count();
         $bidsCount = \App\Models\Order::count();
         
-        // Mock data for chart - last 7 days bids
         $chartData = [
-            'labels' => ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
-            'data' => [12, 19, 3, 5, 2, 3, 15] 
+            'labels' => [],
+            'data' => []
         ];
+
+        for ($i = 6; $i >= 0; $i--) {
+            $date = \Carbon\Carbon::now()->subDays($i);
+            
+            // Simple whereDate logic matching OrderController (Client Panel)
+            // This relies on the App timezone configuration which seems to work for the client side
+            $count = \App\Models\Order::whereDate('created_at', $date->format('Y-m-d'))->count();
+            
+            $chartData['labels'][] = $date->locale('ru')->isoFormat('dd');
+            $chartData['data'][] = $count;
+        }
 
         return response()->json([
             'users_count' => $usersCount,
@@ -213,9 +245,44 @@ class AdminController extends Controller
         ]);
     }
 
-    public function users()
+    public function users(Request $request)
     {
-        return \App\Models\User::orderBy('created_at', 'desc')->get();
+        $query = \App\Models\User::query();
+
+        // Search
+        // Search
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $cleanedSearch = preg_replace('/\D/', '', $search);
+
+            $query->where(function($q) use ($search, $cleanedSearch) {
+                $q->where('name', 'ilike', "%{$search}%")
+                  ->orWhere('email', 'ilike', "%{$search}%")
+                  ->orWhere('phone', 'ilike', "%{$search}%")
+                  ->orWhere('organization_name', 'ilike', "%{$search}%")
+                  ->orWhere('inn', 'ilike', "%{$search}%")
+                  ->orWhereRaw("TO_CHAR(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Moscow', 'DD.MM.YYYY') ILIKE ?", ["%{$search}%"]);
+                
+                if (!empty($cleanedSearch)) {
+                    $q->orWhereRaw("REGEXP_REPLACE(phone, '\D', '', 'g') LIKE ?", ["%{$cleanedSearch}%"]);
+                }
+            });
+        }
+
+        // Sorting
+        $sortField = $request->input('sort_field', 'created_at');
+        $sortDirection = $request->input('sort_direction', 'desc');
+        $allowedSorts = ['id', 'name', 'organization_name', 'phone', 'email', 'created_at'];
+
+        if (in_array($sortField, $allowedSorts)) {
+            $query->orderBy($sortField, $sortDirection === 'asc' ? 'asc' : 'desc');
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        // Pagination
+        $perPage = $request->input('per_page', 10);
+        return $query->paginate($perPage);
     }
 
     public function storeUser(Request $request)
@@ -294,9 +361,47 @@ class AdminController extends Controller
         return response()->json(['message' => 'User deleted']);
     }
 
-    public function bids()
+    public function bids(Request $request)
     {
-        return \App\Models\Order::with('user')->orderBy('created_at', 'desc')->get();
+        $query = \App\Models\Order::query()->with('user');
+
+        // Search
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                // Search by Order ID
+                $q->whereRaw("CAST(id AS TEXT) LIKE ?", ["%{$search}%"]);
+
+                // Special handling for #ID search
+                if (strpos($search, '#') === 0) {
+                     $cleanId = substr($search, 1);
+                     $q->orWhereRaw("CAST(id AS TEXT) LIKE ?", ["%{$cleanId}%"]);
+                }
+
+                // Search by User Name
+                $q->orWhereHas('user', function($u) use ($search) {
+                      $u->where('name', 'ilike', "%{$search}%")
+                        ->orWhere('phone', 'ilike', "%{$search}%");
+                  })
+                  // Search by Date (DD.MM.YYYY)
+                  ->orWhereRaw("TO_CHAR(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Moscow', 'DD.MM.YYYY') ILIKE ?", ["%{$search}%"]);
+            });
+        }
+
+        // Sorting
+        $sortField = $request->input('sort_field', 'created_at');
+        $sortDirection = $request->input('sort_direction', 'desc');
+        $allowedSorts = ['id', 'type', 'status', 'created_at'];
+
+        if (in_array($sortField, $allowedSorts)) {
+            $query->orderBy($sortField, $sortDirection === 'asc' ? 'asc' : 'desc');
+        } else {
+             $query->orderBy('created_at', 'desc');
+        }
+
+        // Pagination
+        $perPage = $request->input('per_page', 15);
+        return $query->paginate($perPage);
     }
 
     public function deleteBid($id)

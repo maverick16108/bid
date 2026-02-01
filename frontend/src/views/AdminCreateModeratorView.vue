@@ -1,25 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 // ... existing code ...
 
-onMounted(() => {
-    // Strictly clear inputs with a slight delay to override aggressive autofill
-    setTimeout(() => {
-        name.value = ''
-        email.value = ''
-        password.value = ''
-        confirmPassword.value = ''
-        
-        nameInput.value?.focus()
-    }, 100)
-    
-    // Also try nextTick default clear
-    nextTick(() => {
-         name.value = ''
-         email.value = ''
-    })
-})
+
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
@@ -35,7 +19,14 @@ const confirmPassword = ref('')
 const nameInput = ref<HTMLInputElement | null>(null)
 const emailInput = ref<HTMLInputElement | null>(null)
 const passwordInput = ref<HTMLInputElement | null>(null)
-let autofillInterval: number | null = null
+
+
+const fieldsReadonly = ref({
+    name: true,
+    email: true,
+    password: true,
+    confirmPassword: true
+})
 
 const isNameValid = computed(() => name.value.length >= 2)
 const isEmailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value))
@@ -62,20 +53,7 @@ const touched = ref({
 
 const serverErrors = ref<Record<string, string>>({})
 
-const handleInput = (field: 'name' | 'email' | 'password' | 'confirmPassword', value: string) => {
-    if (error.value) error.value = ''
-    if (serverErrors.value[field]) serverErrors.value[field] = ''
-    if (field === 'name') name.value = value
-    if (field === 'email') email.value = value
-    if (field === 'password') password.value = value
-    if (field === 'confirmPassword') confirmPassword.value = value
-}
 
-const checkAutofill = () => {
-    if (nameInput.value?.value && nameInput.value.value !== name.value) handleInput('name', nameInput.value.value)
-    if (emailInput.value?.value && emailInput.value.value !== email.value) handleInput('email', emailInput.value.value)
-    if (passwordInput.value?.value && passwordInput.value.value !== password.value) handleInput('password', passwordInput.value.value)
-}
 
 const handleSubmit = async () => {
     touched.value = { name: true, email: true, password: true, confirmPassword: true }
@@ -111,6 +89,11 @@ onMounted(() => {
     password.value = ''
     confirmPassword.value = ''
     
+    // Auto-focus on name input with a slight delay to override aggressive autofill
+    setTimeout(() => {
+        nameInput.value?.focus()
+    }, 100)
+
     document.addEventListener('keydown', handleKeydown)
 })
 
@@ -121,13 +104,12 @@ const handleKeydown = (e: KeyboardEvent) => {
 }
 
 onUnmounted(() => {
-    if (autofillInterval) clearInterval(autofillInterval)
     document.removeEventListener('keydown', handleKeydown)
 })
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto py-8 px-4">
+  <div class="w-full max-w-2xl mx-auto py-8 px-8">
       <!-- Better Back Navigation -->
 
 
@@ -150,7 +132,7 @@ onUnmounted(() => {
                 <p class="text-slate-500">Создание учетной записи сотрудника</p>
             </div>
 
-            <form class="space-y-6 max-w-lg mx-auto" @submit.prevent="handleSubmit">
+            <form class="space-y-6 mx-auto" @submit.prevent="handleSubmit">
                 <!-- Dummy inputs to fool browser autofill -->
                 <input type="text" name="fakeusernameremembered" style="position: absolute; opacity: 0; pointer-events: none; height: 0; width: 0; z-index: -1;" tabindex="-1" />
                 <input type="password" name="fakepasswordremembered" style="position: absolute; opacity: 0; pointer-events: none; height: 0; width: 0; z-index: -1;" tabindex="-1" />
@@ -165,25 +147,26 @@ onUnmounted(() => {
                         required 
                         autocomplete="off"
                         v-model="name"
-                        placeholder="Иван Иванов" 
+                        :readonly="fieldsReadonly.name"
+                        @focus="fieldsReadonly.name = false; touched.name = false"
+                        placeholder="Петр Петров" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow"
                         :class="{
-                             'focus:border-indigo-500 focus:ring-indigo-500': !isNameValid,
+                             'focus:border-indigo-500 focus:ring-indigo-500': !isNameValid || !touched.name,
                              '!text-red-600': touched.name && !isNameValid,
-                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': isNameValid,
-                             '!text-slate-900': !isNameValid && !touched.name,
+                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': touched.name && isNameValid,
+                             '!text-slate-900': !touched.name,
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': touched.name && !isNameValid,
-                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': isNameValid
+                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': touched.name && isNameValid
                         }"
-                        @focus="touched.name = false"
                         @blur="touched.name = true"
-                        :style="{ '--autofill-color': isNameValid ? '#16a34a' : ((touched.name && !isNameValid) ? '#dc2626' : '#0f172a') } as any"
+                        :style="{ '--autofill-color': (touched.name && isNameValid) ? '#16a34a' : ((touched.name && !isNameValid) ? '#dc2626' : '#0f172a') } as any"
                     />
                 </div>
 
                 <!-- Email -->
                 <div>
-                    <label for="email" class="block text-sm font-medium mb-1.5 text-slate-700">Email</label>
+                    <label for="email" class="block text-sm font-medium mb-1.5 text-slate-700">Email (Логин)</label>
                     <input 
                         ref="emailInput"
                         id="email" 
@@ -191,6 +174,8 @@ onUnmounted(() => {
                         required 
                         autocomplete="off"
                         v-model="email"
+                        :readonly="fieldsReadonly.email"
+                        @focus="fieldsReadonly.email = false; touched.email = false; serverErrors.email = ''"
                         placeholder="sotrudnik@novostal.ru" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow"
                         :class="{
@@ -201,7 +186,6 @@ onUnmounted(() => {
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': (touched.email && !isEmailValid) || serverErrors.email,
                              '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': isEmailValid && !serverErrors.email
                         }"
-                        @focus="touched.email = false; serverErrors.email = ''"
                         @blur="touched.email = true"
                         :style="{ '--autofill-color': (isEmailValid && !serverErrors.email) ? '#16a34a' : (((touched.email && !isEmailValid) || serverErrors.email) ? '#dc2626' : '#0f172a') } as any"
                     />
@@ -217,20 +201,20 @@ onUnmounted(() => {
                         required 
                         autocomplete="new-password"
                         v-model="password"
-                        readonly
+                        :readonly="fieldsReadonly.password"
+                        @focus="fieldsReadonly.password = false; touched.password = false"
                         placeholder="••••••••" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow"
                         :class="{
-                             'focus:border-indigo-500 focus:ring-indigo-500': !isPasswordStrong,
+                             'focus:border-indigo-500 focus:ring-indigo-500': (!isPasswordStrong) || !touched.password,
                              '!text-red-600': touched.password && !isPasswordStrong,
-                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': isPasswordStrong,
-                             '!text-slate-900': !isPasswordStrong && !touched.password,
+                             '!text-green-600 font-bold drop-shadow-sm shadow-green-200': touched.password && isPasswordStrong,
+                             '!text-slate-900': !touched.password,
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': touched.password && !isPasswordStrong,
-                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': isPasswordStrong
+                             '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': touched.password && isPasswordStrong
                         }"
-                        @focus="touched.password = false; $event.target.removeAttribute('readonly')"
                         @blur="touched.password = true"
-                        :style="{ '--autofill-color': isPasswordStrong ? '#16a34a' : ((touched.password && !isPasswordStrong) ? '#dc2626' : '#0f172a') } as any"
+                        :style="{ '--autofill-color': (touched.password && isPasswordStrong) ? '#16a34a' : ((touched.password && !isPasswordStrong) ? '#dc2626' : '#0f172a') } as any"
                     />
                     <p class="mt-2 text-xs text-slate-500 flex items-start gap-1">
                         <span class="text-blue-500 font-bold">ℹ️</span>
@@ -246,7 +230,7 @@ onUnmounted(() => {
                         type="password" 
                         required 
                         v-model="confirmPassword"
-                        readonly
+                        :readonly="fieldsReadonly.confirmPassword"
                         placeholder="••••••••" 
                         class="form-input w-full rounded-lg border-slate-300 transition-shadow"
                         :class="{
@@ -257,7 +241,7 @@ onUnmounted(() => {
                              '!border-red-500 !shadow-[0_0_0_4px_rgba(239,68,68,0.3)]': touched.confirmPassword && (!doPasswordsMatch || !isPasswordStrong),
                              '!border-green-500 !shadow-[0_0_20px_rgba(34,197,94,0.6)]': doPasswordsMatch && isPasswordStrong
                         }"
-                        @focus="touched.confirmPassword = false; $event.target.removeAttribute('readonly')"
+                        @focus="fieldsReadonly.confirmPassword = false; touched.confirmPassword = false"
                         @blur="touched.confirmPassword = true"
                         :style="{ '--autofill-color': (doPasswordsMatch && isPasswordStrong) ? '#16a34a' : ((touched.confirmPassword && (!doPasswordsMatch || !isPasswordStrong)) ? '#dc2626' : '#0f172a') } as any"
                     />
