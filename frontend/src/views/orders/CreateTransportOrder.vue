@@ -34,7 +34,7 @@ const submit = async () => {
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto py-8 px-4">
+  <div class="max-w-2xl">
     
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <!-- Card Header -->
@@ -46,7 +46,7 @@ const submit = async () => {
             >
                 <ArrowLeftIcon class="w-5 h-5" />
             </button>
-            <h1 class="text-lg font-semibold text-slate-800">Заказ транспорта</h1>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Заказ транспорта</h1>
         </div>
 
       <div class="px-8 py-8">

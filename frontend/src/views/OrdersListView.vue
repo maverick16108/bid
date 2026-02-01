@@ -47,13 +47,13 @@ const formatDate = (dateString: string) => {
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto">
+  <div>
     <div class="md:flex md:items-center md:justify-between mb-8">
       <div class="min-w-0 flex-1">
-        <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">
           Мои заявки
         </h2>
-        <p class="mt-2 text-sm text-gray-500">История и текущий статус ваших заказов</p>
+        <p class="text-slate-500 text-sm mt-1">История и текущий статус ваших заказов</p>
       </div>
       <div class="mt-4 flex md:ml-4 md:mt-0">
         <router-link to="/create-order" class="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-all transform hover:-translate-y-0.5">

@@ -10,13 +10,13 @@ const navigate = (path: string) => {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto">
+  <div>
     <div class="md:flex md:items-center md:justify-between mb-8">
       <div class="min-w-0 flex-1">
-        <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">
           Создать заявку
         </h2>
-        <p class="mt-2 text-sm text-gray-500">Выберите необходимый тип заявки для продолжения</p>
+        <p class="text-slate-500 text-sm mt-1">Выберите необходимый тип заявки для продолжения</p>
       </div>
     </div>
     
